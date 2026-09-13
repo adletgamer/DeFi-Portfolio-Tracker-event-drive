@@ -1,0 +1,37 @@
+{
+  "name": "defi-portfolio-tracker",
+  "version": "0.1.0",
+  "description": "Event-driven, serverless DeFi portfolio tracker: a scheduled poller reads on-chain events for watched wallets over HTTPS RPC, enqueues them, a normalizer writes them to DynamoDB, and an HTTP API serves the results.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "bootstrap": "tsx src/local/bootstrap.ts",
+    "poll": "tsx src/local/run-poller.ts",
+    "dev": "tsx src/local/dev.ts",
+    "api": "tsx src/local/api-server.ts",
+    "worker": "tsx src/local/worker.ts",
+    "e2e": "tsx src/local/e2e.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.658.0",
+    "@aws-sdk/client-sqs": "^3.658.0",
+    "@aws-sdk/lib-dynamodb": "^3.658.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/jest": "^29.5.13",
+    "@types/node": "^22.7.4",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2"
+  }
+}

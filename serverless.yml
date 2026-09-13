@@ -1,0 +1,94 @@
+# Serverless deployment blueprint for the DeFi Portfolio Tracker.
+#
+# This documents the intended AWS topology (no EC2, no VPC, no NAT):
+#   EventBridge schedule -> poller Lambda -> SQS -> normalizer Lambda -> DynamoDB
+#                                                    API Gateway -> api Lambda -> DynamoDB
+#
+# Local development does NOT use this file; it runs the same handlers against
+# DynamoDB Local + ElasticMQ (see README). Deploying requires the Serverless
+# Framework and AWS credentials.
+service: defi-portfolio-tracker
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ${env:AWS_REGION, 'us-east-1'}
+  environment:
+    TABLE_NAME: ${self:custom.tableName}
+    QUEUE_NAME: ${self:custom.queueName}
+    WATCHED_WALLETS: ${env:WATCHED_WALLETS, ''}
+    RPC_MODE: http
+    RPC_URL: ${env:RPC_URL, 'https://cloudflare-eth.com'}
+    # Empty => use the real AWS regional endpoints (local dev defaults to emulators).
+    DYNAMODB_ENDPOINT: ""
+    SQS_ENDPOINT: ""
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:PutItem
+            - dynamodb:Query
+          Resource:
+            - !GetAtt EventsTable.Arn
+        - Effect: Allow
+          Action:
+            - sqs:SendMessage
+            - sqs:ReceiveMessage
+            - sqs:DeleteMessage
+            - sqs:GetQueueUrl
+          Resource:
+            - !GetAtt EventsQueue.Arn
+
+custom:
+  tableName: DefiEvents
+  queueName: defi-events
+
+package:
+  individually: true
+
+functions:
+  poller:
+    handler: dist/handlers/poller.handler
+    timeout: 60
+    events:
+      - schedule: rate(5 minutes)
+
+  normalizer:
+    handler: dist/handlers/normalizer.handler
+    events:
+      - sqs:
+          arn: !GetAtt EventsQueue.Arn
+          batchSize: 10
+
+  api:
+    handler: dist/handlers/api-lambda.handler
+    events:
+      - httpApi: "GET /health"
+      - httpApi: "GET /wallets"
+      - httpApi: "GET /wallets/{address}/events"
+      - httpApi: "GET /wallets/{address}/portfolio"
+
+resources:
+  Resources:
+    EventsQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:custom.queueName}
+        VisibilityTimeout: 60
+
+    EventsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tableName}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: pk
+            AttributeType: S
+          - AttributeName: sk
+            AttributeType: S
+        KeySchema:
+          - AttributeName: pk
+            KeyType: HASH
+          - AttributeName: sk
+            KeyType: RANGE
