@@ -1,18 +1,5 @@
 {
   "name": "DeFi Portfolio Tracker",
   "install": "bash scripts/install.sh",
-  "terminals": [
-    {
-      "name": "dynamodb",
-      "command": "bash scripts/start-dynamodb.sh"
-    },
-    {
-      "name": "elasticmq",
-      "command": "bash scripts/start-elasticmq.sh"
-    },
-    {
-      "name": "app",
-      "command": "npm run dev"
-    }
-  ]
+  "start": "bash scripts/start-all.sh"
 }
