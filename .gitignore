@@ -1,16 +1,41 @@
+# Node
 node_modules/
 dist/
+*.js
+*.d.ts
+build
+
+# CDK
+.cdk.staging
+cdk.out
+
+# Environment
 .env
 .env.local
+.env.*.local
 
-# Local AWS emulator jars and data (downloaded during install)
+# Local AWS emulator jars and data
 .localstack/
 tmp/
-*.log
 dynamodb-local-metadata.json
-npm-debug.log*
 
-# OS / editor
-.DS_Store
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test coverage
+coverage
+.nyc_output
+
+# IDE
 .idea/
 .vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
