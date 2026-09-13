@@ -1,4 +1,4 @@
-import { SQSHandler, SQSRecord } from 'aws-lambda';
+import { SQSHandler, SQSRecord, SQSBatchResponse } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
 
@@ -38,29 +38,28 @@ interface PortfolioPosition {
  * - Processes events idempotently
  * - Writes position updates to PortfolioPositions table
  * - SK format: {nft_id}#{EVENT_TYPE} for unique event deduplication
+ * - Uses partial batch failure reporting to retry only failed messages
  */
-export const handler: SQSHandler = async (event) => {
+export const handler: SQSHandler = async (event): Promise<SQSBatchResponse> => {
   console.log(`Processing ${event.Records.length} SQS messages`);
 
-  const results = await Promise.allSettled(
-    event.Records.map((record) => processRecord(record))
-  );
+  const batchItemFailures: { itemIdentifier: string }[] = [];
 
-  const succeeded = results.filter((r) => r.status === 'fulfilled').length;
-  const failed = results.filter((r) => r.status === 'rejected').length;
-
-  console.log(`Processed: ${succeeded} succeeded, ${failed} failed`);
-
-  // If any failed, throw to trigger retry/DLQ
-  if (failed > 0) {
-    const errors = results
-      .filter((r) => r.status === 'rejected')
-      .map((r) => (r as PromiseRejectedResult).reason);
-    console.error('Processing errors:', errors);
-    throw new Error(`Failed to process ${failed} messages`);
+  for (const record of event.Records) {
+    try {
+      await processRecord(record);
+    } catch (error) {
+      console.error(`Failed to process message ${record.messageId}:`, error);
+      batchItemFailures.push({ itemIdentifier: record.messageId });
+    }
   }
 
-  return;
+  const succeeded = event.Records.length - batchItemFailures.length;
+  console.log(`Processed: ${succeeded} succeeded, ${batchItemFailures.length} failed`);
+
+  // Return failed message IDs for partial batch failure
+  // SQS will retry only these messages
+  return { batchItemFailures };
 };
 
 async function processRecord(record: SQSRecord): Promise<void> {

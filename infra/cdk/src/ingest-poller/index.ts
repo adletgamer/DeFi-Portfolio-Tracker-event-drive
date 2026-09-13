@@ -1,6 +1,6 @@
 import { Handler } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, ScanCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { SQSClient, SendMessageBatchCommand } from '@aws-sdk/client-sqs';
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
 
@@ -55,6 +55,7 @@ export const handler: Handler = async (event) => {
 
     // 2. Fetch events for each address
     const allEvents: DeFiEvent[] = [];
+    const blockUpdates: Array<{ address: string; block: number }> = [];
     
     for (const item of watchlistItems) {
       const events = USE_MOCK_EVENTS
@@ -62,6 +63,12 @@ export const handler: Handler = async (event) => {
         : await fetchRealEvents(item);
       
       allEvents.push(...events);
+      
+      // Track latest block for each address
+      if (events.length > 0) {
+        const maxBlock = Math.max(...events.map(e => e.block_number));
+        blockUpdates.push({ address: item.user_address, block: maxBlock });
+      }
     }
 
     console.log(`Fetched ${allEvents.length} total events`);
@@ -70,6 +77,9 @@ export const handler: Handler = async (event) => {
     if (allEvents.length > 0) {
       await sendEventsToQueue(allEvents);
     }
+
+    // 4. Update last_polled_block for each address
+    await updatePolledBlocks(blockUpdates);
 
     return {
       statusCode: 200,
@@ -92,30 +102,54 @@ async function getWatchlist(): Promise<WatchlistItem[]> {
 }
 
 async function generateMockEvents(watchlistItem: WatchlistItem): Promise<DeFiEvent[]> {
-  // Generate 0-3 random mock events per address
-  const eventCount = Math.floor(Math.random() * 4);
+  /**
+   * DETERMINISTIC MOCK EVENTS
+   * 
+   * Generates a fixed set of events based on address to avoid infinite DynamoDB growth.
+   * Each address gets 3 fixed NFT positions (IDs: 1001, 1002, 1003).
+   * Events are deterministic and idempotent - same address always gets same nft_ids.
+   */
   const events: DeFiEvent[] = [];
   
   const currentBlock = watchlistItem.last_polled_block || 18000000;
-  const newBlock = currentBlock + Math.floor(Math.random() * 10) + 1;
+  const newBlock = currentBlock + 1;
 
-  for (let i = 0; i < eventCount; i++) {
-    const eventTypes: Array<'DEPOSIT' | 'EXIT' | 'TRANSFER'> = ['DEPOSIT', 'EXIT', 'TRANSFER'];
-    const eventType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
+  // Deterministic NFT IDs based on address hash
+  const addressSuffix = watchlistItem.user_address.slice(-4);
+  const baseNftId = parseInt(addressSuffix, 16) % 1000 + 1000;
+  
+  // Fixed set of 3 NFT positions per address
+  const nftIds = [baseNftId, baseNftId + 1, baseNftId + 2];
+  const eventTypes: Array<'DEPOSIT' | 'EXIT' | 'TRANSFER'> = ['DEPOSIT', 'EXIT', 'TRANSFER'];
+  
+  // Generate one event per NFT type (3 events total per address)
+  for (let i = 0; i < nftIds.length; i++) {
+    const nftId = nftIds[i];
+    const eventType = eventTypes[i % eventTypes.length];
+    
+    // Deterministic amount based on nftId
+    const amount = ((nftId % 100) + 10).toFixed(4);
+    
+    // Deterministic token address based on event type
+    const tokenAddresses: Record<string, string> = {
+      DEPOSIT: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+      EXIT: '0x6B175474E89094C44Da98b954EedeAC495271d0F',
+      TRANSFER: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
+    };
     
     events.push({
       event_type: eventType,
       user_address: watchlistItem.user_address,
-      nft_id: `${Math.floor(Math.random() * 10000)}`,
-      amount: (Math.random() * 100).toFixed(4),
-      token_address: '0x' + 'a'.repeat(40),
+      nft_id: nftId.toString(),
+      amount,
+      token_address: tokenAddresses[eventType],
       block_number: newBlock,
-      transaction_hash: '0x' + Math.random().toString(16).substring(2, 66),
+      transaction_hash: `0x${watchlistItem.user_address.slice(2, 10)}${nftId}${eventType}`.padEnd(66, '0'),
       timestamp: Date.now(),
     });
   }
 
-  console.log(`Generated ${events.length} mock events for ${watchlistItem.user_address}`);
+  console.log(`Generated ${events.length} deterministic mock events for ${watchlistItem.user_address}`);
   return events;
 }
 
@@ -164,6 +198,27 @@ async function fetchRealEvents(watchlistItem: WatchlistItem): Promise<DeFiEvent[
   // const { apiKey } = JSON.parse(secretValue.SecretString || '{}');
   
   return [];
+}
+
+async function updatePolledBlocks(updates: Array<{ address: string; block: number }>): Promise<void> {
+  for (const { address, block } of updates) {
+    try {
+      await docClient.send(
+        new UpdateCommand({
+          TableName: WATCHLIST_TABLE_NAME,
+          Key: { user_address: address },
+          UpdateExpression: 'SET last_polled_block = :block, updated_at = :now',
+          ExpressionAttributeValues: {
+            ':block': block,
+            ':now': Date.now(),
+          },
+        })
+      );
+      console.log(`Updated last_polled_block for ${address} to ${block}`);
+    } catch (error) {
+      console.error(`Failed to update last_polled_block for ${address}:`, error);
+    }
+  }
 }
 
 async function sendEventsToQueue(events: DeFiEvent[]): Promise<void> {

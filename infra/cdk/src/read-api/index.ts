@@ -46,6 +46,19 @@ export const handler: Handler = async (event) => {
       };
     }
 
+    // Validate Ethereum address format
+    if (!isValidEthereumAddress(address)) {
+      return {
+        statusCode: 400,
+        headers: getCorsHeaders(),
+        body: JSON.stringify({
+          error: 'Invalid Ethereum address format',
+          message: 'Address must be 42 characters starting with 0x',
+          provided: address,
+        }),
+      };
+    }
+
     // Query DynamoDB for positions
     const positions = await getPositionsByAddress(address);
 
@@ -84,6 +97,10 @@ async function getPositionsByAddress(address: string): Promise<PortfolioPosition
   );
 
   return (result.Items || []) as PortfolioPosition[];
+}
+
+function isValidEthereumAddress(address: string): boolean {
+  return /^0x[0-9a-fA-F]{40}$/.test(address);
 }
 
 function getCorsHeaders() {

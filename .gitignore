@@ -1,28 +1,23 @@
-# CDK asset staging directory
-.cdk.staging
-cdk.out
-
 # Node
-node_modules
+node_modules/
+dist/
 *.js
 *.d.ts
-dist
+build
+
+# CDK
+.cdk.staging
+cdk.out
 
 # Environment
 .env
 .env.local
 .env.*.local
 
-# IDE
-.idea
-.vscode
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
+# Local AWS emulator jars and data
+.localstack/
+tmp/
+dynamodb-local-metadata.json
 
 # Logs
 *.log
@@ -34,5 +29,13 @@ yarn-error.log*
 coverage
 .nyc_output
 
-# Build artifacts
-build
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

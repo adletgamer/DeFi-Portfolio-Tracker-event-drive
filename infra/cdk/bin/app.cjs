@@ -1,7 +1,6 @@
 #!/usr/bin/env node
-import 'source-map-support/register';
-import * as cdk from 'aws-cdk-lib';
-import { DefiPortfolioTrackerStack } from '../lib/defi-portfolio-tracker-stack';
+const cdk = require('aws-cdk-lib');
+const { DefiPortfolioTrackerStack } = require('../lib/defi-portfolio-tracker-stack.cjs');
 
 const app = new cdk.App();
 

@@ -1,22 +1,19 @@
-import * as cdk from 'aws-cdk-lib';
-import { Construct } from 'constructs';
-import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as lambdaNodejs from 'aws-cdk-lib/aws-lambda-nodejs';
-import * as sqs from 'aws-cdk-lib/aws-sqs';
-import * as events from 'aws-cdk-lib/aws-events';
-import * as targets from 'aws-cdk-lib/aws-events-targets';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import * as logs from 'aws-cdk-lib/aws-logs';
-import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
-import * as cw_actions from 'aws-cdk-lib/aws-cloudwatch-actions';
-import * as sns from 'aws-cdk-lib/aws-sns';
-import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
-import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
-import * as path from 'path';
+const cdk = require('aws-cdk-lib');
+const { Construct } = require('constructs');
+const dynamodb = require('aws-cdk-lib/aws-dynamodb');
+const lambda = require('aws-cdk-lib/aws-lambda');
+const lambdaNodejs = require('aws-cdk-lib/aws-lambda-nodejs');
+const sqs = require('aws-cdk-lib/aws-sqs');
+const events = require('aws-cdk-lib/aws-events');
+const targets = require('aws-cdk-lib/aws-events-targets');
+const logs = require('aws-cdk-lib/aws-logs');
+const cloudwatch = require('aws-cdk-lib/aws-cloudwatch');
+const secretsmanager = require('aws-cdk-lib/aws-secretsmanager');
+const { SqsEventSource } = require('aws-cdk-lib/aws-lambda-event-sources');
+const path = require('path');
 
-export class DefiPortfolioTrackerStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+class DefiPortfolioTrackerStack extends cdk.Stack {
+  constructor(scope, id, props) {
     super(scope, id, props);
 
     // ========================================
@@ -83,7 +80,7 @@ export class DefiPortfolioTrackerStack extends cdk.Stack {
     const ingestPollerFunction = new lambdaNodejs.NodejsFunction(this, 'IngestPoller', {
       functionName: 'defi-ingest-poller',
       runtime: lambda.Runtime.NODEJS_20_X,
-      entry: path.join(__dirname, '../src/lambdas/ingest-poller/index.ts'),
+      entry: path.join(__dirname, '../src/ingest-poller/index.ts'),
       handler: 'handler',
       timeout: cdk.Duration.seconds(60),
       memorySize: 256,
@@ -101,6 +98,7 @@ export class DefiPortfolioTrackerStack extends cdk.Stack {
     });
 
     watchlistTable.grantReadData(ingestPollerFunction);
+    watchlistTable.grantWriteData(ingestPollerFunction);
     eventsQueue.grantSendMessages(ingestPollerFunction);
     rpcApiKeySecret.grantRead(ingestPollerFunction);
 
@@ -118,7 +116,7 @@ export class DefiPortfolioTrackerStack extends cdk.Stack {
     const processorFunction = new lambdaNodejs.NodejsFunction(this, 'Processor', {
       functionName: 'defi-processor',
       runtime: lambda.Runtime.NODEJS_20_X,
-      entry: path.join(__dirname, '../src/lambdas/processor/index.ts'),
+      entry: path.join(__dirname, '../src/processor/index.ts'),
       handler: 'handler',
       timeout: cdk.Duration.seconds(60),
       memorySize: 256,
@@ -138,6 +136,7 @@ export class DefiPortfolioTrackerStack extends cdk.Stack {
       new SqsEventSource(eventsQueue, {
         batchSize: 10,
         maxBatchingWindow: cdk.Duration.seconds(5),
+        reportBatchItemFailures: true,
       })
     );
 
@@ -148,7 +147,7 @@ export class DefiPortfolioTrackerStack extends cdk.Stack {
     const readApiFunction = new lambdaNodejs.NodejsFunction(this, 'ReadApi', {
       functionName: 'defi-read-api',
       runtime: lambda.Runtime.NODEJS_20_X,
-      entry: path.join(__dirname, '../src/lambdas/read-api/index.ts'),
+      entry: path.join(__dirname, '../src/read-api/index.ts'),
       handler: 'handler',
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
@@ -232,3 +231,5 @@ export class DefiPortfolioTrackerStack extends cdk.Stack {
     });
   }
 }
+
+module.exports = { DefiPortfolioTrackerStack };
