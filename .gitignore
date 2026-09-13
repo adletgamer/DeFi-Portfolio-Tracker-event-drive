@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.env
+.env.local
+
+# Local AWS emulator jars and data (downloaded during install)
+.localstack/
+tmp/
+*.log
+dynamodb-local-metadata.json
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
