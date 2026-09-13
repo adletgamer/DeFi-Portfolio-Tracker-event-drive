@@ -71,15 +71,16 @@ graph TD
 # 1. Install dependencies and download AWS emulators
 bash scripts/install.sh
 
-# 2. Start emulators in separate terminals
+# 2a. All-in-one: start emulators + app (bootstrap + API + worker + cron)
+bash scripts/start-all.sh
+
+# 2b. Or start each service in its own terminal to see separate logs:
 bash scripts/start-dynamodb.sh     # DynamoDB Local on :8000
 bash scripts/start-elasticmq.sh    # ElasticMQ (SQS) on :9324
-
-# 3. Start the app stack (API + worker + cron)
-npm run dev
+npm run dev                        # API + worker + cron
 ```
 
-**In Cloud Agents**, this is automatic: `install.sh` runs during the `install` phase, and emulators + app start via `.cursor/environment.json`.
+**In Cloud Agents**, this is automatic: `install.sh` runs during the `install` phase and `scripts/start-all.sh` runs during the `start` phase, per `.cursor/environment.json`.
 
 ### Local Testing
 
@@ -281,7 +282,8 @@ DeFi-Portfolio-Tracker-event-drive/
 │   │   └── read-api/            # Address validation
 │   └── tsconfig.json            # CDK TypeScript config
 ├── scripts/                      # Setup & emulator scripts
-│   ├── install.sh               # Downloads emulators
+│   ├── install.sh               # Installs deps + downloads emulators
+│   ├── start-all.sh             # Starts emulators + app (start phase)
 │   ├── start-dynamodb.sh        # Starts DynamoDB Local
 │   └── start-elasticmq.sh       # Starts ElasticMQ (SQS)
 ├── serverless.yml               # Serverless Framework config (optional)
@@ -380,12 +382,13 @@ Un rastreador de portafolio DeFi serverless y orientado a eventos que hace polli
 # 1. Instalar dependencias y descargar emuladores AWS
 bash scripts/install.sh
 
-# 2. Iniciar emuladores en terminales separadas
+# 2a. Todo en uno: emuladores + app (bootstrap + API + worker + cron)
+bash scripts/start-all.sh
+
+# 2b. O inicia cada servicio en su propia terminal para ver logs separados:
 bash scripts/start-dynamodb.sh     # DynamoDB Local en :8000
 bash scripts/start-elasticmq.sh    # ElasticMQ (SQS) en :9324
-
-# 3. Iniciar el stack de la app (API + worker + cron)
-npm run dev
+npm run dev                        # API + worker + cron
 ```
 
 ### Pruebas Locales
