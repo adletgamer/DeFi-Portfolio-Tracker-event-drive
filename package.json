@@ -1,0 +1,47 @@
+{
+  "name": "defi-portfolio-tracker",
+  "version": "1.0.0",
+  "description": "Event-driven DeFi Portfolio Tracker on AWS - Free Tier friendly",
+  "bin": {
+    "defi-portfolio-tracker": "bin/app.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "jest",
+    "cdk": "cdk",
+    "synth": "cdk synth",
+    "deploy": "cdk deploy",
+    "diff": "cdk diff",
+    "destroy": "cdk destroy"
+  },
+  "keywords": [
+    "defi",
+    "aws",
+    "cdk",
+    "serverless",
+    "portfolio-tracker"
+  ],
+  "author": "AlejandraCV01",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.145",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.14.9",
+    "aws-cdk": "^2.149.0",
+    "esbuild": "^0.21.5",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.2",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.5.3"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1131.0",
+    "@aws-sdk/client-secrets-manager": "^3.1131.0",
+    "@aws-sdk/client-sqs": "^3.1131.0",
+    "@aws-sdk/lib-dynamodb": "^3.1131.0",
+    "aws-cdk-lib": "^2.149.0",
+    "constructs": "^10.3.0",
+    "source-map-support": "^0.5.21"
+  }
+}
