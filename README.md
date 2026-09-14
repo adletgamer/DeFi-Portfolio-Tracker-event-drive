@@ -27,8 +27,6 @@ Open [`frontend/index.html`](frontend/index.html) in a browser (or serve the fol
 
 *Placeholder: add a screenshot of `frontend/index.html` here after the first UI pass.*
 
-**Read API (AWS, `us-east-1`):** `https://drgop2ruibgnw4smbhw7hooppu0ejbka.lambda-url.us-east-1.on.aws/`
-
 Optional local override: open `frontend/index.html?api=http://127.0.0.1:8787` to point the UI at another base URL.
 
 ### Architecture
