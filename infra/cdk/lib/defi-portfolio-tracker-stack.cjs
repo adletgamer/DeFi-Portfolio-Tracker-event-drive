@@ -153,6 +153,7 @@ class DefiPortfolioTrackerStack extends cdk.Stack {
       memorySize: 256,
       environment: {
         PORTFOLIO_POSITIONS_TABLE_NAME: portfolioPositionsTable.tableName,
+        WATCHLIST_TABLE_NAME: watchlistTable.tableName,
       },
       bundling: {
         minify: true,
@@ -162,14 +163,13 @@ class DefiPortfolioTrackerStack extends cdk.Stack {
     });
 
     portfolioPositionsTable.grantReadData(readApiFunction);
+    watchlistTable.grantReadData(readApiFunction);
 
     const functionUrl = readApiFunction.addFunctionUrl({
       authType: lambda.FunctionUrlAuthType.NONE,
-      cors: {
-        allowedOrigins: ['*'],
-        allowedMethods: [lambda.HttpMethod.GET],
-        allowedHeaders: ['Content-Type', 'X-Amz-Date', 'Authorization', 'X-Api-Key'],
-      },
+      // CORS is implemented in the ReadApi handler (OPTIONS → 200, ACAO *).
+      // Do not also set Function URL `cors`: AWS appends a second
+      // Access-Control-Allow-Origin and browsers reject the response.
     });
 
     // ========================================
@@ -210,6 +210,21 @@ class DefiPortfolioTrackerStack extends cdk.Stack {
       exportName: 'DefiReadApiUrl',
     });
 
+    new cdk.CfnOutput(this, 'ReadApiFunctionArn', {
+      value: readApiFunction.functionArn,
+      description: 'ARN of the ReadApi Lambda',
+    });
+
+    new cdk.CfnOutput(this, 'IngestPollerFunctionArn', {
+      value: ingestPollerFunction.functionArn,
+      description: 'ARN of the IngestPoller Lambda',
+    });
+
+    new cdk.CfnOutput(this, 'ProcessorFunctionArn', {
+      value: processorFunction.functionArn,
+      description: 'ARN of the Processor Lambda',
+    });
+
     new cdk.CfnOutput(this, 'PortfolioPositionsTableName', {
       value: portfolioPositionsTable.tableName,
       description: 'DynamoDB table for portfolio positions',
@@ -223,6 +238,11 @@ class DefiPortfolioTrackerStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'EventsQueueUrl', {
       value: eventsQueue.queueUrl,
       description: 'SQS queue for DeFi events',
+    });
+
+    new cdk.CfnOutput(this, 'EventsQueueArn', {
+      value: eventsQueue.queueArn,
+      description: 'ARN of the events SQS queue',
     });
 
     new cdk.CfnOutput(this, 'RpcSecretArn', {

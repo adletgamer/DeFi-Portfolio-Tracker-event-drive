@@ -2,7 +2,7 @@
 export default {
   preset: "ts-jest/presets/default-esm",
   testEnvironment: "node",
-  roots: ["<rootDir>/src"],
+  roots: ["<rootDir>/src", "<rootDir>/infra/cdk/src"],
   testMatch: ["**/*.test.ts"],
   extensionsToTreatAsEsm: [".ts"],
   moduleNameMapper: {
@@ -14,7 +14,9 @@ export default {
       {
         useESM: true,
         tsconfig: {
-          verbatimModuleSyntax: false
+          verbatimModuleSyntax: false,
+          rootDir: ".",
+          isolatedModules: true
         }
       }
     ]

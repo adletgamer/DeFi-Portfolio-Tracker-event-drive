@@ -17,6 +17,19 @@ A serverless, event-driven DeFi portfolio tracker that polls blockchain events f
 - ✅ **Mock Mode**: Deterministic mock events for testing without real blockchain RPC
 - ✅ **Dual APIs**: Express server (local) or Lambda Function URL (AWS)
 - ✅ **No VPC/NAT/EC2**: Purely serverless, minimal cost
+- ✅ **Frontend**: vanilla dark-mode UI in `frontend/index.html` (no build step)
+
+### Frontend
+
+Open [`frontend/index.html`](frontend/index.html) in a browser (or serve the folder with any static server). Paste a wallet address and click **Buscar** to query the deployed Read API.
+
+![DeFi Portfolio Tracker frontend](frontend/screenshot.png)
+
+*Placeholder: add a screenshot of `frontend/index.html` here after the first UI pass.*
+
+**Read API (AWS, `us-east-1`):** `https://drgop2ruibgnw4smbhw7hooppu0ejbka.lambda-url.us-east-1.on.aws/`
+
+Optional local override: open `frontend/index.html?api=http://127.0.0.1:8787` to point the UI at another base URL.
 
 ### Architecture
 
@@ -123,14 +136,22 @@ All variables have defaults for local development. Copy `.env.example` to `.env`
 - **AWS CDK CLI**: `npm install -g aws-cdk`
 - (Optional) Infura/Alchemy API key for real blockchain data
 
-### Deploy to AWS
+### How to deploy / Cómo desplegar
+
+From the CDK app directory:
+
+```bash
+cd infra/cdk && npx cdk deploy
+```
+
+Equivalent from the repo root (installs/builds first):
 
 ```bash
 # 1. Install dependencies
 npm install
 
 # 2. Bootstrap CDK (first time only)
-npx cdk bootstrap
+npx cdk bootstrap aws://529057333190/us-east-1
 
 # 3. Synthesize CloudFormation template
 npm run synth
@@ -139,10 +160,64 @@ npm run synth
 npm run deploy
 ```
 
-**Outputs** (after deployment):
-- `ReadApiFunctionUrl`: HTTP endpoint for querying positions
-- `WatchlistTableName`: DynamoDB table (add addresses here)
-- `RpcSecretArn`: Secrets Manager secret ARN
+### How to test the API / Cómo probar la API
+
+```bash
+READ_API="https://drgop2ruibgnw4smbhw7hooppu0ejbka.lambda-url.us-east-1.on.aws"
+ADDRESS="0x1234567890abcdef1234567890abcdef12345678"
+
+# Preflight CORS
+curl -i -X OPTIONS "$READ_API/positions" \
+  -H "Origin: https://example.com" \
+  -H "Access-Control-Request-Method: GET" \
+  -H "Access-Control-Request-Headers: content-type"
+
+# Positions
+curl "$READ_API/positions?address=$ADDRESS"
+
+# Watchlist membership
+curl "$READ_API/watchlist?address=$ADDRESS"
+
+# Legacy root path (same payload as /positions)
+curl "$READ_API/?address=$ADDRESS"
+```
+
+**Example `/positions` response:**
+
+```json
+{
+  "address": "0x...",
+  "positions": [
+    {
+      "event_type": "DEPOSIT",
+      "nft_id": "1606",
+      "amount": "16.0000",
+      "block_number": 18000003,
+      "token_address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "timestamp": 1789345849825
+    }
+  ],
+  "count": 3
+}
+```
+
+### Deploy outputs (URL, ARNs)
+
+Account `529057333190`, region `us-east-1`.
+
+| Output | Value |
+|--------|-------|
+| **ReadApi Function URL** | `https://drgop2ruibgnw4smbhw7hooppu0ejbka.lambda-url.us-east-1.on.aws/` |
+| **ReadApi ARN** | `arn:aws:lambda:us-east-1:529057333190:function:defi-read-api` |
+| **IngestPoller ARN** | `arn:aws:lambda:us-east-1:529057333190:function:defi-ingest-poller` |
+| **Processor ARN** | `arn:aws:lambda:us-east-1:529057333190:function:defi-processor` |
+| **Events queue URL** | `https://sqs.us-east-1.amazonaws.com/529057333190/defi-events-queue` |
+| **Events queue ARN** | `arn:aws:sqs:us-east-1:529057333190:defi-events-queue` |
+| **PortfolioPositions** | `arn:aws:dynamodb:us-east-1:529057333190:table/PortfolioPositions` |
+| **Watchlist** | `arn:aws:dynamodb:us-east-1:529057333190:table/Watchlist` |
+| **RPC secret ARN** | `arn:aws:secretsmanager:us-east-1:529057333190:secret:defi-portfolio-tracker/rpc-api-key` |
+
+CDK also prints `ReadApiFunctionUrl`, `ReadApiFunctionArn`, `IngestPollerFunctionArn`, `ProcessorFunctionArn`, `EventsQueueUrl`, `EventsQueueArn`, and `RpcSecretArn` after `npx cdk deploy`.
 
 ### CDK Infrastructure Location
 
@@ -188,21 +263,7 @@ aws dynamodb put-item \
   }'
 ```
 
-### Query Positions (AWS)
-
-```bash
-curl "https://<function-url>.lambda-url.us-east-1.on.aws/?address=0x1234567890abcdef1234567890abcdef12345678"
-```
-
-**Response:**
-```json
-{
-  "address": "0x1234...",
-  "positions": [...],
-  "count": 3,
-  "timestamp": "2026-09-13T18:30:00.000Z"
-}
-```
+See [How to test the API](#how-to-test-the-api--cómo-probar-la-api) for the live Function URL and curl examples.
 
 ### Security Notes
 
@@ -210,6 +271,8 @@ curl "https://<function-url>.lambda-url.us-east-1.on.aws/?address=0x1234567890ab
 - Consider using `AWS_IAM` auth type
 - Add API Gateway with Cognito/JWT authentication
 - The ReadApi validates Ethereum address format to prevent injection attacks
+
+CORS is implemented **in the ReadApi handler** (`OPTIONS` → 200, `Access-Control-Allow-Origin: *`). Do not also enable Lambda Function URL CORS in CDK: AWS would append a second `Access-Control-Allow-Origin` header and browsers would block the response.
 
 ### Free Tier Cost Breakdown
 
@@ -278,8 +341,10 @@ DeFi-Portfolio-Tracker-event-drive/
 │   ├── src/                      # CDK Lambda wrappers
 │   │   ├── ingest-poller/       # Deterministic mock generator
 │   │   ├── processor/           # Partial batch failure support
-│   │   └── read-api/            # Address validation
+│   │   └── read-api/            # Address validation + CORS
 │   └── tsconfig.json            # CDK TypeScript config
+├── frontend/                     # Static dark-mode UI (no build)
+│   └── index.html
 ├── scripts/                      # Setup & emulator scripts
 │   ├── install.sh               # Downloads emulators
 │   ├── start-dynamodb.sh        # Starts DynamoDB Local
@@ -319,7 +384,7 @@ View in [CloudWatch Console](https://console.aws.amazon.com/cloudwatch/).
 
 ## Roadmap / Enhancements
 
-- [ ] Frontend (React/Vue) to visualize portfolio
+- [x] Vanilla frontend (`frontend/index.html`) to visualize portfolio
 - [ ] Multi-chain support (Polygon, Arbitrum, etc.)
 - [ ] WebSocket listener for real-time events
 - [ ] Cognito authentication for API
@@ -356,10 +421,40 @@ Un rastreador de portafolio DeFi serverless y orientado a eventos que hace polli
 - ✅ **Modo Mock**: Eventos mock deterministas para pruebas sin RPC blockchain real
 - ✅ **APIs Duales**: Servidor Express (local) o Lambda Function URL (AWS)
 - ✅ **Sin VPC/NAT/EC2**: Completamente serverless, costo mínimo
+- ✅ **Frontend**: UI dark mode en `frontend/index.html` (sin build)
+
+### Frontend
+
+Abre [`frontend/index.html`](frontend/index.html), pega una wallet y pulsa **Buscar**.
+
+![DeFi Portfolio Tracker frontend](frontend/screenshot.png)
+
+*Placeholder: captura de `frontend/index.html`.*
 
 ### Arquitectura
 
-*(Ver diagrama en sección inglesa arriba)*
+```mermaid
+graph TD
+    A[EventBridge Schedule<br/>rate 5 min] -->|Trigger| B[Lambda: IngestPoller]
+    B -->|Read| C[DynamoDB: Watchlist]
+    B -->|Fetch Events| D[JSON-RPC Provider<br/>or Mock Generator]
+    B -->|Send Messages| E[SQS: Events Queue]
+    E -->|Batch Trigger| F[Lambda: Processor]
+    F -->|Write| G[DynamoDB: PortfolioPositions]
+    H[Lambda: ReadApi<br/>Function URL] -->|Query| G
+    I[Frontend / Browser] -->|GET /positions?address=0x...| H
+    E -->|Dead Letters| J[SQS: DLQ]
+    K[CloudWatch Alarms] -->|Monitor| F
+    K -->|Monitor| J
+    L[Secrets Manager] -.->|RPC API Key| B
+
+    style B fill:#FF9900
+    style F fill:#FF9900
+    style H fill:#FF9900
+    style E fill:#FF6B6B
+    style G fill:#4A90E2
+    style C fill:#4A90E2
+```
 
 ### Componentes
 
@@ -414,26 +509,37 @@ npm test
 - **AWS CDK CLI**: `npm install -g aws-cdk`
 - (Opcional) API key de Infura/Alchemy para datos blockchain reales
 
-### Desplegar en AWS
+### Cómo desplegar
 
 ```bash
-# 1. Instalar dependencias
-npm install
-
-# 2. Inicializar CDK (solo la primera vez)
-npx cdk bootstrap
-
-# 3. Sintetizar plantilla CloudFormation
-npm run synth
-
-# 4. Desplegar en AWS
-npm run deploy
+cd infra/cdk && npx cdk deploy
 ```
 
-**Salidas** (después del despliegue):
-- `ReadApiFunctionUrl`: Endpoint HTTP para consultar posiciones
-- `WatchlistTableName`: Tabla DynamoDB (agregar direcciones aquí)
-- `RpcSecretArn`: ARN del secreto en Secrets Manager
+### Cómo probar la API
+
+```bash
+READ_API="https://drgop2ruibgnw4smbhw7hooppu0ejbka.lambda-url.us-east-1.on.aws"
+ADDRESS="0x1234567890abcdef1234567890abcdef12345678"
+
+curl -i -X OPTIONS "$READ_API/positions" \
+  -H "Origin: https://example.com" \
+  -H "Access-Control-Request-Method: GET" \
+  -H "Access-Control-Request-Headers: content-type"
+
+curl "$READ_API/positions?address=$ADDRESS"
+curl "$READ_API/watchlist?address=$ADDRESS"
+```
+
+### Outputs del deploy (URL, ARNs)
+
+| Output | Valor |
+|--------|-------|
+| **ReadApi Function URL** | `https://drgop2ruibgnw4smbhw7hooppu0ejbka.lambda-url.us-east-1.on.aws/` |
+| **ReadApi ARN** | `arn:aws:lambda:us-east-1:529057333190:function:defi-read-api` |
+| **IngestPoller ARN** | `arn:aws:lambda:us-east-1:529057333190:function:defi-ingest-poller` |
+| **Processor ARN** | `arn:aws:lambda:us-east-1:529057333190:function:defi-processor` |
+| **Events queue ARN** | `arn:aws:sqs:us-east-1:529057333190:defi-events-queue` |
+| **RPC secret ARN** | `arn:aws:secretsmanager:us-east-1:529057333190:secret:defi-portfolio-tracker/rpc-api-key` |
 
 ### Ubicación de Infraestructura CDK
 
@@ -474,6 +580,8 @@ El sistema inicia en **modo mock** (`USE_MOCK_EVENTS=true`). Los eventos mock so
 - Considerar usar tipo de auth `AWS_IAM`
 - Agregar API Gateway con autenticación Cognito/JWT
 - ReadApi valida formato de dirección Ethereum para prevenir ataques de inyección
+
+CORS se implementa **en el handler de ReadApi** (`OPTIONS` → 200, origen `*`). No habilites también CORS en la Function URL de CDK: AWS duplicaría `Access-Control-Allow-Origin` y el navegador bloquearía la respuesta.
 
 ### Desglose de Costos Free Tier
 
