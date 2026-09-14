@@ -305,6 +305,7 @@
   </div>
 
   <script>
+    // Public Read API endpoint (not a credential). Override with ?api= for local mocks.
     const DEFAULT_API_BASE = "https://drgop2ruibgnw4smbhw7hooppu0ejbka.lambda-url.us-east-1.on.aws";
     const params = new URLSearchParams(window.location.search);
     const API_BASE = (params.get("api") || DEFAULT_API_BASE).replace(/\/$/, "");

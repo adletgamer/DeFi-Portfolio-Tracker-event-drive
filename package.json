@@ -15,6 +15,7 @@
     "build:cdk": "tsc -p infra/cdk/tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "audit:secrets": "node --experimental-vm-modules node_modules/jest/bin/jest.js src/security.docs.test.ts",
     "bootstrap": "tsx src/local/bootstrap.ts",
     "poll": "tsx src/local/run-poller.ts",
     "dev": "tsx src/local/dev.ts",
@@ -34,7 +35,7 @@
     "serverless",
     "portfolio-tracker"
   ],
-  "author": "AlejandraCV01",
+  "author": "DeFi Portfolio Tracker contributors",
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.658.0",
     "@aws-sdk/client-secrets-manager": "^3.658.0",

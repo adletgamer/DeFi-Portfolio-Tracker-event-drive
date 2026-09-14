@@ -23,11 +23,17 @@ A serverless, event-driven DeFi portfolio tracker that polls blockchain events f
 
 Open [`frontend/index.html`](frontend/index.html) in a browser (or serve the folder with any static server). Paste a wallet address and click **Buscar** to query the deployed Read API.
 
-![DeFi Portfolio Tracker frontend](frontend/screenshot.png)
+![DeFi Portfolio Tracker — positions table](frontend/demo/positions-table.webp)
 
-*Placeholder: add a screenshot of `frontend/index.html` here after the first UI pass.*
+[Watch the walkthrough video](frontend/demo/walkthrough.mp4)
 
-Optional local override: open `frontend/index.html?api=http://127.0.0.1:8787` to point the UI at another base URL.
+| Empty wallet | Invalid address | Narrow layout |
+|--------------|-----------------|---------------|
+| ![Empty](frontend/demo/empty-state.webp) | ![Invalid](frontend/demo/invalid-address.webp) | ![Mobile](frontend/demo/mobile-cards.webp) |
+
+The Read API URL is the CDK output `ReadApiFunctionUrl` (do not commit AWS account IDs or ARNs). Override locally with `frontend/index.html?api=http://127.0.0.1:8787`.
+
+Security notes: see [SECURITY.md](SECURITY.md).
 
 ### Architecture
 
@@ -149,7 +155,7 @@ Equivalent from the repo root (installs/builds first):
 npm install
 
 # 2. Bootstrap CDK (first time only)
-npx cdk bootstrap aws://529057333190/us-east-1
+npx cdk bootstrap
 
 # 3. Synthesize CloudFormation template
 npm run synth
@@ -161,7 +167,8 @@ npm run deploy
 ### How to test the API / Cómo probar la API
 
 ```bash
-READ_API="https://drgop2ruibgnw4smbhw7hooppu0ejbka.lambda-url.us-east-1.on.aws"
+# After deploy, copy ReadApiFunctionUrl from the CDK output:
+READ_API="<READ_API_URL>"
 ADDRESS="0x1234567890abcdef1234567890abcdef12345678"
 
 # Preflight CORS
@@ -201,19 +208,24 @@ curl "$READ_API/?address=$ADDRESS"
 
 ### Deploy outputs (URL, ARNs)
 
-Account `529057333190`, region `us-east-1`.
+Do **not** commit account IDs. After `npx cdk deploy`, CloudFormation prints:
 
-| Output | Value |
-|--------|-------|
-| **ReadApi Function URL** | `https://drgop2ruibgnw4smbhw7hooppu0ejbka.lambda-url.us-east-1.on.aws/` |
-| **ReadApi ARN** | `arn:aws:lambda:us-east-1:529057333190:function:defi-read-api` |
-| **IngestPoller ARN** | `arn:aws:lambda:us-east-1:529057333190:function:defi-ingest-poller` |
-| **Processor ARN** | `arn:aws:lambda:us-east-1:529057333190:function:defi-processor` |
-| **Events queue URL** | `https://sqs.us-east-1.amazonaws.com/529057333190/defi-events-queue` |
-| **Events queue ARN** | `arn:aws:sqs:us-east-1:529057333190:defi-events-queue` |
-| **PortfolioPositions** | `arn:aws:dynamodb:us-east-1:529057333190:table/PortfolioPositions` |
-| **Watchlist** | `arn:aws:dynamodb:us-east-1:529057333190:table/Watchlist` |
-| **RPC secret ARN** | `arn:aws:secretsmanager:us-east-1:529057333190:secret:defi-portfolio-tracker/rpc-api-key` |
+| Output | Meaning |
+|--------|---------|
+| `ReadApiFunctionUrl` | Public HTTP endpoint for the Read API |
+| `ReadApiFunctionArn` | ReadApi Lambda ARN |
+| `IngestPollerFunctionArn` | IngestPoller Lambda ARN |
+| `ProcessorFunctionArn` | Processor Lambda ARN |
+| `EventsQueueUrl` / `EventsQueueArn` | SQS events queue |
+| `RpcSecretArn` | Secrets Manager ARN for the RPC API key |
+| `PortfolioPositionsTableName` / `WatchlistTableName` | DynamoDB table names |
+
+Example (placeholders only):
+
+```text
+ReadApiFunctionUrl = https://<id>.lambda-url.us-east-1.on.aws/
+ReadApiFunctionArn = arn:aws:lambda:us-east-1:<ACCOUNT_ID>:function:defi-read-api
+```
 
 CDK also prints `ReadApiFunctionUrl`, `ReadApiFunctionArn`, `IngestPollerFunctionArn`, `ProcessorFunctionArn`, `EventsQueueUrl`, `EventsQueueArn`, and `RpcSecretArn` after `npx cdk deploy`.
 
@@ -294,7 +306,8 @@ CORS is implemented **in the ReadApi handler** (`OPTIONS` → 200, `Access-Contr
 |---------|--------------|
 | **Local Dev** ||
 | `npm run build` | Compile TypeScript to `dist/` |
-| `npm test` | Unit tests (normalization, portfolio, mock generator) |
+| `npm test` | Unit tests (normalization, portfolio, mock generator, docs secret scan) |
+| `npm run audit:secrets` | Fail if AWS account IDs reappear in docs |
 | `npm run bootstrap` | Create table/queue in local emulators |
 | `npm run dev` | Full local stack (API + worker + cron) |
 | `npm run poll` | Run poller once |
@@ -342,7 +355,9 @@ DeFi-Portfolio-Tracker-event-drive/
 │   │   └── read-api/            # Address validation + CORS
 │   └── tsconfig.json            # CDK TypeScript config
 ├── frontend/                     # Static dark-mode UI (no build)
-│   └── index.html
+│   ├── index.html               # Dark-mode UI
+│   ├── screenshot.webp          # Main UI preview
+│   └── demo/                    # Screenshots + walkthrough video
 ├── scripts/                      # Setup & emulator scripts
 │   ├── install.sh               # Downloads emulators
 │   ├── start-dynamodb.sh        # Starts DynamoDB Local
@@ -425,9 +440,11 @@ Un rastreador de portafolio DeFi serverless y orientado a eventos que hace polli
 
 Abre [`frontend/index.html`](frontend/index.html), pega una wallet y pulsa **Buscar**.
 
-![DeFi Portfolio Tracker frontend](frontend/screenshot.png)
+![DeFi Portfolio Tracker — tabla de posiciones](frontend/demo/positions-table.webp)
 
-*Placeholder: captura de `frontend/index.html`.*
+[Ver video de walkthrough](frontend/demo/walkthrough.mp4)
+
+La URL de la API es el output CDK `ReadApiFunctionUrl`. No subas IDs de cuenta ni ARNs. Ver [SECURITY.md](SECURITY.md).
 
 ### Arquitectura
 
@@ -516,7 +533,7 @@ cd infra/cdk && npx cdk deploy
 ### Cómo probar la API
 
 ```bash
-READ_API="https://drgop2ruibgnw4smbhw7hooppu0ejbka.lambda-url.us-east-1.on.aws"
+READ_API="<READ_API_URL>"
 ADDRESS="0x1234567890abcdef1234567890abcdef12345678"
 
 curl -i -X OPTIONS "$READ_API/positions" \
@@ -530,14 +547,7 @@ curl "$READ_API/watchlist?address=$ADDRESS"
 
 ### Outputs del deploy (URL, ARNs)
 
-| Output | Valor |
-|--------|-------|
-| **ReadApi Function URL** | `https://drgop2ruibgnw4smbhw7hooppu0ejbka.lambda-url.us-east-1.on.aws/` |
-| **ReadApi ARN** | `arn:aws:lambda:us-east-1:529057333190:function:defi-read-api` |
-| **IngestPoller ARN** | `arn:aws:lambda:us-east-1:529057333190:function:defi-ingest-poller` |
-| **Processor ARN** | `arn:aws:lambda:us-east-1:529057333190:function:defi-processor` |
-| **Events queue ARN** | `arn:aws:sqs:us-east-1:529057333190:defi-events-queue` |
-| **RPC secret ARN** | `arn:aws:secretsmanager:us-east-1:529057333190:secret:defi-portfolio-tracker/rpc-api-key` |
+No subas IDs de cuenta. Tras `npx cdk deploy`, CloudFormation imprime `ReadApiFunctionUrl`, `ReadApiFunctionArn`, `IngestPollerFunctionArn`, `ProcessorFunctionArn`, `EventsQueueUrl`, `EventsQueueArn` y `RpcSecretArn`.
 
 ### Ubicación de Infraestructura CDK
 

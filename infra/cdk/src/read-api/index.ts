@@ -3,6 +3,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import {
   getHttpMethod,
+  getRawPath,
   isValidEthereumAddress,
   jsonResponse,
   optionsResponse,
@@ -44,7 +45,10 @@ interface WatchlistItem {
  * - GET /watchlist?address=0x...
  */
 export const handler: Handler = async (event) => {
-  console.log('ReadApi invoked', event);
+  console.log('ReadApi invoked', {
+    method: getHttpMethod(event),
+    path: getRawPath(event),
+  });
 
   if (getHttpMethod(event) === 'OPTIONS') {
     return optionsResponse();
@@ -101,7 +105,6 @@ export const handler: Handler = async (event) => {
     console.error('Error in ReadApi:', error);
     return jsonResponse(500, {
       error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 };

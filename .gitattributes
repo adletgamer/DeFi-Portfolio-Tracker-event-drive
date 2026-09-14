@@ -1,0 +1,3 @@
+# Treat media as binary
+*.mp4 binary
+*.webp binary
