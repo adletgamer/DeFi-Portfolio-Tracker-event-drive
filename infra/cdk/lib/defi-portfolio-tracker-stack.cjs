@@ -167,12 +167,9 @@ class DefiPortfolioTrackerStack extends cdk.Stack {
 
     const functionUrl = readApiFunction.addFunctionUrl({
       authType: lambda.FunctionUrlAuthType.NONE,
-      cors: {
-        allowedOrigins: ['*'],
-        allowedMethods: [lambda.HttpMethod.GET, lambda.HttpMethod.OPTIONS],
-        allowedHeaders: ['Content-Type'],
-        maxAge: cdk.Duration.hours(24),
-      },
+      // CORS is implemented in the ReadApi handler (OPTIONS → 200, ACAO *).
+      // Do not also set Function URL `cors`: AWS appends a second
+      // Access-Control-Allow-Origin and browsers reject the response.
     });
 
     // ========================================

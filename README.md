@@ -272,6 +272,8 @@ See [How to test the API](#how-to-test-the-api--cómo-probar-la-api) for the liv
 - Add API Gateway with Cognito/JWT authentication
 - The ReadApi validates Ethereum address format to prevent injection attacks
 
+CORS is implemented **in the ReadApi handler** (`OPTIONS` → 200, `Access-Control-Allow-Origin: *`). Do not also enable Lambda Function URL CORS in CDK: AWS would append a second `Access-Control-Allow-Origin` header and browsers would block the response.
+
 ### Free Tier Cost Breakdown
 
 | Service | Free Tier | This Stack (AWS) | Monthly Cost |
@@ -578,6 +580,8 @@ El sistema inicia en **modo mock** (`USE_MOCK_EVENTS=true`). Los eventos mock so
 - Considerar usar tipo de auth `AWS_IAM`
 - Agregar API Gateway con autenticación Cognito/JWT
 - ReadApi valida formato de dirección Ethereum para prevenir ataques de inyección
+
+CORS se implementa **en el handler de ReadApi** (`OPTIONS` → 200, origen `*`). No habilites también CORS en la Function URL de CDK: AWS duplicaría `Access-Control-Allow-Origin` y el navegador bloquearía la respuesta.
 
 ### Desglose de Costos Free Tier
 

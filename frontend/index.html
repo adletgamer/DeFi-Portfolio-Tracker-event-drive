@@ -477,10 +477,7 @@
       setLoading(true);
       try {
         const url = `${API_BASE}/positions?address=${encodeURIComponent(address)}`;
-        const response = await fetch(url, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        });
+        const response = await fetch(url, { method: "GET" });
 
         let payload = null;
         try {

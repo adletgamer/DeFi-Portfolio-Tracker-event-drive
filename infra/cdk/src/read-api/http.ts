@@ -1,6 +1,10 @@
 /**
  * Shared HTTP helpers for the ReadApi Lambda.
  * Kept free of AWS SDK imports so CORS/routing can be unit-tested.
+ *
+ * CORS is returned by the function itself. Do not also enable Function URL
+ * CORS in CDK: that duplicates Access-Control-Allow-Origin and browsers
+ * block the response.
  */
 
 export const CORS_HEADERS: Record<string, string> = {
